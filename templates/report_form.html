@@ -1,0 +1,164 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block css_files %}
+{% endblock css_files %}
+
+{% block js_files %}
+    <script src='{% static "controllers/reportCtrl.js" %}'></script>
+{% endblock js_files %}
+
+{% block content %}
+
+<script type="text/javascript">
+
+    $(function(){
+        $('.datePicker').datepicker({
+            changeYear:true,
+            selectOtherMonths:true,
+            showOtherMonths:true,
+        });
+    });
+    
+</script>
+
+{% verbatim %}
+<div ng-app="reportApp" ng-controller="reportCtrl">
+
+    <!-- left side -->
+    <div style="float:left;text-align:left;width:21%;height:80.5%;margin:1px 0 5px 5px;padding:0 7px 0 7px;">
+        <div style="position:absolute; color:#509541; margin:15px 0 0 120px; font-size:24px;">Reports</div>
+        <div style="margin-top:50px; height:90%; width:98%; border:2px solid #727272;overflow:auto;overflow-x:hidden;">
+            <div style="cursor:pointer;width:100%;height:30px; padding:10px 0 0 5px" ng-repeat="report in reports | orderBy:'reportname'" ng-class-even="'altlist'" ng-click="selectReport(report)">
+                <div style="margin-left:10px;" ng-class="{'list-selected': activeReport.reportname==report.reportname}">{{ report.reporttitle }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- right side -->
+    <div style="float:left;width:68%;margin:1px 0 0 10px;">
+
+        <div id="message" class="popup"></div>
+        <div id="column_1" style="float:left;height:100%; width:21%">
+            
+            <!-- date range -->
+            <div style="color:#509541; margin-top:10px; font-size:18px;">Date Range</div>
+            <div style="margin-top:20px; width:100%; height:23%; border:2px solid #727272;">
+                <div class="newRow" style="margin-top:5px;">
+                    <span class="input-header" style="width:35px;">Date:</span>
+                    <select style="margin-top:6px; width:162px; font-size:14px;" ng-model="activeReport.datefielddefault">
+                        <option ng-repeat="df in dateFields" ng-value="df.item">{{df.field}}</option>
+                    </select>
+                </div>
+                <div class="newRow" style="margin-top:5px;">
+                    <span class="input-header" style="width:93px;">From:</span>
+                    <input class="datePicker" type="text" style="width:105px" ng-model="activeReport.startdatedefault" ng-disabled="activeReport.askstartdate==false">
+                </div>
+                <div class="newRow" style="margin-top:5px;">
+                    <span class="input-header" style="width:93px;">To:</span>
+                    <input class="datePicker" type="text" style="width:105px" ng-model="activeReport.enddatedefault" ng-disabled="activeReport.askenddate==false">
+                </div>
+                <div class="newRow" style="margin-top:5px;">
+                    <span class="input-header" style="width:126px;">Award Year:</span>
+                    <select style="margin-top:6px;" ng-model="activeReport.awardyeardefault" ng-disabled="activeReport.askawardyear==false">
+                        <option ng-repeat="ay in awardYears" ng-value="ay.value">{{ay.display}}</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- campus -->
+            <div style="color:#509541; margin-top:20px; font-size:18px;">Campus</div>
+            <div style="margin-top:10px; width:100%; height:18%; border:2px solid #727272;" ng-disabled="!activeReport.askcampus">
+                <div class="newRow" style="width:100%; overflow:auto;overflow-x:hidden;" ng-disabled="!activeReport.askcampus">
+                    <div style="cursor:pointer; width:100%;height:30px; padding:10px 0 0 5px" ng-model-options="" ng-click="selectCampus(c)"
+                         ng-repeat="c in campuses | orderBy:'campusid'" ng-class-even="'altlist'" ng-disabled="!activeReport.askcampus">
+                        <div style="width:100%;" ng-class="{'list-selected': activeCampus.campusid==c.campusid}">
+                            <span style="float:left; margin-left:5px;">{{ c.campusname }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="newRow" style="margin-top:10px;">
+                <span class="input-header" style="width:180px;">Show Details:</span>
+                <input type="checkbox" ng-model="activeReport.detailsdefault" ng-disabled="activeReport.askdetails==0" ng-checked="activeReport.detailsdefault" ng-true-value="1" ng-false-value="0">
+            </div>
+
+            <div class="newRow">
+                <span class="input-header" style="width:180px;">Show Totals:</span>
+                <input type="checkbox" ng-model="activeReport.totalsdefault" ng-disabled="activeReport.asktotals==0" ng-checked="activeReport.totalsdefault" ng-true-value="1" ng-false-value="0">
+            </div>
+
+            <div class="newRow">
+                <span class="input-header" style="width:180px;">Show Full SSN:</span>
+                <input type="checkbox" ng-model="activeReport.fullssndefault" ng-disabled="activeReport.askfullssn==0" ng-checked="activeReport.fullssndefault==1" ng-true-value="1" ng-false-value="0">
+            </div>
+
+            <input type="button" style="float:right; width:auto; margin:15px 10px 0 0; padding-top:0px;" class="btn_submit" value="Generate Report" ng-disabled="activeReport==null" ng-click="generateReport()"></input>
+
+        </div>
+
+        <div id="column_2" style="float:left;height:100%; margin-left:15px; width:16.5%">
+
+            <!-- enrollment status -->
+            <div style="color:#509541; margin-top:10px; font-size:18px;">Enrollment Status</div>
+            <div class="newRow" style="margin-top:5px; font-size:10px; color:lightgray;" ng-show="activeReport.statuses.length">{{activeReport.statuses}}</div>
+            <div style="margin-top:20px; height:48.5%; width:99%; border:2px solid #727272;">
+                <div class="newRow" style="width:100%; height:100%; overflow:auto; overflow-x:hidden;">
+                    <div style="cursor:pointer; width:100%; height:30px; padding:10px 0 0 10px" ng-repeat="s in enrollmentStatuses | orderBy:'enrollmentstatusid'" ng-class-even="'altlist'" ng-click="selectStatus(s)">
+                        <div ng-class="{'list-selected': activeReport.statuses.indexOf(s.enrollmentstatusid) > -1}">
+                            <span style="float:left;">{{ s.enrollmentstatus }}</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <a style="float:left;margin:5px 0 0 5px;color:blue" href="" ng-click="allStatuses()">All</a>
+            <a style="float:left;margin:5px 0 0 15px;color:blue" href="" ng-click="activeReport.statuses=[]">None</a>
+        </div>
+
+        <div id="column_3" style="float:left;height:100%; margin-left:15px;  width:18%">
+
+            <!-- fed programs -->
+            <div style="color:#509541; margin-top:10px; font-size:18px;">Federal Programs</div>
+            <div class="newRow" style="margin-top:5px; font-size:10px; color:lightgray;" ng-show="activeReport.fedpgms.length">{{activeReport.fedpgms}}</div>
+            <div style="margin-top:20px; height:67.5%; width:99%; border:2px solid #727272;">
+                <div class="newRow" style="width:100%; height:100%; overflow:auto; overflow-x:hidden;">
+                    <div style="cursor:pointer; width:100%; height:30px; padding:10px 0 0 10px" ng-repeat="p in federalPrograms | orderBy:'seq'" ng-class-even="'altlist'" ng-click="selectFederalProgram(p)">
+                        <div ng-class="{'list-selected': activeReport.fedpgms.indexOf(p.fedpgmid) > -1}">
+                            <span style="float:left;">{{ p.fedpgmname }}</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <a style="float:left;margin:5px 0 0 5px;color:blue" href="" ng-click="allFederalPrograms()">All</a>
+            <a style="float:left;margin:5px 0 0 15px;color:blue" href="" ng-click="activeReport.fedpgms=[]">None</a>
+        </div>
+
+        <div id="column_4" style="float:left;height:100%; margin-left:15px;  width:33%">
+
+            <!-- study programs -->
+            <div style="color:#509541; margin-top:10px; font-size:18px;">Study Programs</div>
+            <div class="newRow" style="margin-top:5px; font-size:10px; color:lightgray;" ng-show="activeReport.studypgms.length">{{activeReport.studypgms}}</div>
+            <div style="margin-top:20px; height:67.5%; width:99%; border:2px solid #727272;">
+                <div class="newRow" style="width:100%; height:100%; overflow:auto; overflow-x:hidden;">
+                    <div style="cursor:pointer; width:100%; height:30px; padding:10px 0 0 10px" ng-repeat="p in studyPrograms | orderBy:'programid'" ng-class-even="'altlist'" ng-click="selectStudyProgram(p)">
+                        <div ng-class="{'list-selected': activeReport.studypgms.indexOf(p.programid) > -1}">
+                            <span style="float:left;">{{ p.programname }}</span>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+            <a style="float:left;margin:5px 0 0 5px;color:blue" href="" ng-click="allStudyPrograms()">All</a>
+            <a style="float:left;margin:5px 0 0 15px;color:blue" href="" ng-click="activeReport.studypgms=[]">None</a>
+        </div>
+
+        
+    </div>
+
+</div>
+{% endverbatim %}
+{% endblock content %}

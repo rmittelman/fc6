@@ -1,0 +1,92 @@
+{% load static %}
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8"><style type="text/css">@charset "UTF-8";[ng\:cloak],[ng-cloak],[data-ng-cloak],[x-ng-cloak],.ng-cloak,.x-ng-cloak,.ng-hide:not(.ng-animate){display:none !important;}ng\:form{display:block;}</style>
+    <head>
+        <title>FC6</title>
+
+        <style>
+        [ng\:cloak], [ng-cloak], [data-ng-cloak], [x-ng-cloak], .ng-cloak, .x-ng-cloak {
+          display: none !important;
+        }
+        </style>
+
+        <link rel='stylesheet' href='{% static "css/base.css" %}'>
+        <link rel='stylesheet' href='{% static "css/spinner.css" %}'>
+        <link rel='stylesheet' href='{% static "css/jquery.datetimepicker.css" %}'>
+        <link rel='stylesheet' href='{% static "css/jquery-ui.css" %}'>
+        
+        <script src='{% static "js/angular.min.js" %}'></script>
+        <script src='{% static "js/jquery-3.2.1.min.js" %}'></script>
+        <script src='{% static "js/jquery-ui.min.js" %}'></script>
+        <script src='{% static "js/angular-animate.min.js" %}'></script>
+        <script src='{% static "js/jquery.colorbox-min.js" %}'></script>
+        <script src='{% static "js/roundProgress.min.js" %}'></script>
+
+{% block css_files %}
+{% endblock css_files %}
+
+{% block js_files %}
+{% endblock js_files %}
+
+    </head>
+    <body>
+        <div id="header_container">
+            <div class="menu" style="overflow:hidden;">
+                <div id="menu_left">
+                    <a href="/"><img src='{% static "images/shamrocks_logo.png" %}' id="shamrocks-logo"/></a>
+                </div>
+                <div style="float:left; margin-left:10px;">
+                    <form name="setup" method="POST" action="/setschoolandyear/">
+                        {% csrf_token %}
+                        <div class="input-header">School:</div>
+                        <select style="float:left;margin-top:5px;" ng-model="{{activeSchool.school_id}}" name="select_school" id="select_school">
+                            {% for school in schools %}
+                            <option value="{{school.school_id}}">{{school.schoolid}}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="input-header" style="margin-left:20px;">Award Year:</div>
+                        <select style="float:left;margin-top:5px;" ng-model="{{activeYear}}" name="select_award_year" id="select_award_year">
+                            {% for ay in awardYears %}
+                            <option value="{{ay.value}}">{{ay.display}}</option>
+                            {% endfor %}
+                        </select>
+                        
+                        <input class="btn_green" style="margin-left:20px;" type="submit" value="Submit">
+                    </form>
+                </div>
+                <div id="menu_right">
+                    <ul>
+                        <li><a href="/students/">Students &amp; Profiles</a></li>
+                        <li><a href="/reports/">Reports</a></li>
+                        <li><a href="/admin/">Admin</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    
+        <!-- BEGIN: Page Content -->
+        <div class="site-wrap">
+            {% block content %}{% endblock content %} 
+        </div>
+        <!-- END: Page Content -->
+    
+        <!-- BEGIN: Sticky Footer -->
+        <div id="footer_container">
+            <div class="menu" style="padding:0px;">
+    
+            </div>
+            <!-- END: Sticky Footer -->
+        </div>
+<script type="text/javascript">
+    
+    // get award year info
+    var awardYears = eval("{{awardYears|safe}}");
+    var activeYear = {{activeYear}};
+
+    // get school info
+    var schools = eval("{{schools|safe}}");
+    var currentSchool = {{currentSchool}};
+    var result = $.grep(schools, function(e){ return e.school_id == currentSchool;});
+    var activeSchool = result[0];
+</script>
+    </body>
+</html>

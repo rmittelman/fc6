@@ -1,0 +1,510 @@
+{% extends 'base.html' %}
+
+{% load static %}
+
+{% block css_files %}
+{% endblock css_files %}
+
+{% block js_files %}
+    <script src='{% static "controllers/fc6Ctrl.js" %}'></script>
+{% endblock js_files %}
+
+{% block content %}
+
+<script type="text/javascript">
+    
+    window.onload = function(){
+        var input = document.getElementById('student_search');
+        input.focus();
+    }
+
+    $(function(){
+        $('.datePicker').datepicker({
+            changeYear:true,
+            selectOtherMonths:true,
+            showOtherMonths:true,
+        });
+    });
+    
+</script>
+{% verbatim %}
+<div ng-app="fcApp" ng-controller="fcCtrl">
+    
+    <!-- left side -->
+    <div style="float:left;text-align:left;width:26%;height:80.5%;margin:1px 0 5px 5px;padding:0 7px 0 7px;">
+        
+        <!-- find -->
+        <div style="position:absolute;z-index:99; width:28%;">
+            <div style="float:left;width:40px;margin-top:20px;padding-right:3px; text-align:right;">
+                <span class="green">Find: &nbsp;</span>
+            </div>
+            <div style="float:left;text-align:left;margin:7px 0 3px 5px;">
+                <input style="width: 200px;" id="student_search" type=text ng-keypress="selectFirstStudent($event)" ng-model="student_search" placeholder="name / ssn">
+                <div ng-show="student_search" style="margin-top:3px; max-height:575px; border:3px solid #727272;width:261px;background-color:white;overflow:auto;overflow-x:hidden;">
+                    <div style="cursor:pointer;width:100%;height:45px; padding:10px 0 0 5px;" ng-repeat="stud in students | filter:student_search as filtered" ng-click="selectStudent(stud);" ng-class-even="'altlist'">
+                        {{ stud.ssn | ssnFormat }} <br>
+                        {{ stud.firstname }} {{ stud.lastname }}
+                    </div>
+                </div>
+            </div>
+            <div style="float:left; margin:20px 0 0 10px;color:darkgrey">{{ activeStudent.ssn | ssnFormat }}</div>
+        </div>
+        
+        <!-- profiles -->
+        <div style="margin-top:50px; height:22%; width:98%; border:3px solid #727272;overflow:auto;overflow-x:hidden;">
+            <div style="cursor:pointer;width:100%;height:40px; padding:5px 0 0 5px" ng-repeat="profile in profiles | orderBy:'-studentprofileid'" ng-class-even="'altlist'" ng-click="selectProfile(profile)">
+                <div style="margin-left:10px;" ng-class="{'list-selected': activeProfile.studentprofileid==profile.studentprofileid}">{{ profile.programname }} <br>
+                    <span style="font-size:10px;color:green">AY:&nbsp;</span>{{ profile.awardyear | awardYearFormat }}
+                    <span style="font-size:10px;color:green">START:&nbsp;</span>{{ profile.startdate | dateFormat:'MM/dd/yyyy'}}
+                    <span style="font-size:10px;color:green">STATUS:&nbsp;</span>{{ profile.enrollmentstatus}}
+                </div>
+            </div>
+        </div>
+        <form name="studentForm" id="studentForm" ng-submit="submitStudentForm(studentForm.$valid)" novalidate>
+            
+            <!-- student info -->
+            <div style="width:100%">
+                <input style="float:left; width:44.6%;" placeholder="First name" ng-model="activeStudent.firstname">
+                <input style="float:left; width:54%; margin-left:3px;" placeholder="Last name" ng-model="activeStudent.lastname">
+            </div>
+            <div >
+                <input style="float:left; width:54%;" placeholder="Address 1" ng-model="activeStudent.address1">
+                <input name="address2" style="float:left; width:44.6%; margin-left:3px;" placeholder="Address 2" ng-model="activeStudent.address2">
+            </div>
+            <div >
+                <input style="float:left; width:66%;" placeholder="City" ng-model="activeStudent.city">
+                <input style="float:left; width:50px; margin-left:3px;" placeholder="ST" ng-model="activeStudent.state">
+                <input style="float:left; width:80px; margin-left:3px;" placeholder="Zip" ng-model="activeStudent.zip">
+            </div>
+            <div>
+                <input type="tel" name="phone" style="float:left; width:32.6%;" placeholder="Phone" ng-model="activeStudent.phone">
+                <input type="email" name="email" style="float:left; width:66%; margin-left:3px;" placeholder="Email" ng-model="activeStudent.email">
+            </div>
+            <div >
+                <input type="text" style="float:left; width:105px;" placeholder="DOB" ng-model="activeStudent.dob">
+                <input style="float:left; width:60px; margin-left:3px;" placeholder="M/F" ng-model="activeStudent.gender">
+                <input style="float:left; width:60px; margin-left:3px;" placeholder="Eth" ng-model="activeStudent.ethnicityid">
+                <!-- <button type="submit" style="float:right;margin:5px 3px 0 0;" class="{{studentForm.$valid ? 'btn_green': 'btn_grey'}}" ng-disabled="studentForm.$invalid">Submit</button> -->
+                <button type="submit" style="float:right;margin:5px 3px 0 0;" class="btn_submit" ng-disabled="studentForm.$invalid || studentForm.$pristine">Submit</button>
+            </div>
+            <div>
+                <textarea style="margin-top:5px;width:99.5%;height:38%;resize:none;" rows="3" placeholder="Notes" ng-model="activeStudent.notes"></textarea>
+            </div>
+        </form>    
+    </div>
+
+    <!-- right side -->
+    <div style="float:left;width:68%;margin:1px 0 0 10px;">
+        
+        <div style="float:left; margin: 20px 5px 0 5px;">
+            <span style="color:lightgray">Profile {{ activeProfile.studentprofileid }}: {{ activeProfile.programname }}</span>
+        </div>
+
+        <div id="message" class="popup"></div>
+
+        <!-- submit buttons -->
+        <div style="float:right; margin-right:5px;">
+            <input type="button" class="btn_green" ng-if="okToSubmit()" value="Submit">
+            <input type="button" class="btn_orange" value="Cancel">
+            <input type="button" class="btn_grey" value="test">
+        </div>
+        
+        <div style="position:absolute;float:left;width:98%;height:95%">
+            
+            <!-- tab buttons and frame -->
+            <div style="float:left;margin:45px 50px 0 0;">
+                <input type="button" class="{{tab_1_active ? 'tab_btn_active': 'tab_btn_inactive'}}" value="Program" ng-click="switchTab('1');">
+                <input type="button" class="{{tab_2_active ? 'tab_btn_active': 'tab_btn_inactive'}}" value="Allowances" ng-click="switchTab('2');">
+                <input type="button" class="{{tab_3_active ? 'tab_btn_active': 'tab_btn_inactive'}}" value="Awards &amp; Financial Aid" ng-click="switchTab(3);">
+                <input type="button" class="{{tab_4_active ? 'tab_btn_active': 'tab_btn_inactive'}}" value="Payments" ng-click="switchTab(4);">
+            </div>
+            <div style="float:left;margin-top:55px;">{{studentForm.$pristine}} {{studentForm.$error}}
+                <span class="blink_text" style="font-size:24px;" ng-show="message.length>0 || (studentForm.$invalid && !studentForm.$pristine)">{{message}}.</span>
+            </div>
+            <div style="margin:90px 0 0 0;width:72%;height:70%;border:3px solid #727272;overflow:auto;overflow-x:hidden;">
+                
+                <!-- tab 1 contents -->
+                <div ng-show="tab_1_active" style="height:90%;width:100%;overflow:auto;overflow-x:hidden;">
+                    
+                    <div id="tab_1_left" style="float:left;height:100%; width:30%">
+                         <div class="newRow" style="margin-top:20px;">
+                            <span class="input-header" style="width:110px;">Award Year:</span>
+                            <select ng-model="activeProfile.awardyear">
+                                <option ng-repeat="ay in awardYears" ng-value="ay.value">{{ay.display}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Start Date:</span>
+                            <input class="datePicker" style="width:105px" ng-value="activeProfile.startdate" ng-model="activeProfile.startdate">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">LDA:</span>
+                            <input class="datePicker" type="text" style="width:105px" ng-model="activeProfile.enddate">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Exp. End Date:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.expectedgraddate">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">ACD:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.acd">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Program Hours:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.programhours">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Federal Hours:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.federalhours">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Transfer Hours:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.transferhours">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Program Weeks:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.programweeks">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Federal Weeks:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.federalweeks">
+                        </div>
+                    </div>
+                    
+                    <div id="tab_1_center" style="float:left;height:100%; width:30%">
+                        <div class="newRow" style="margin-top:65px;">
+                            <span class="input-header" style="width:110px;">Tuition:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.tuitionfee">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Registration:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.registrationfee">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Books:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.booksfee">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">STRF:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.strffee">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">{{ activeProfile.otherfee1desc }}:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.otherfee1">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">{{ activeProfile.otherfee2desc }}:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.otherfee2">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Total Fees:</span>
+                            <span class="disabled_input" style="width:90px">{{calcFees()}}</span>
+                        </div>
+                    </div>
+                    
+                    <div id="tab_1_right" style="float:left;height:100%; width:39%">
+                        <div class="newRow" style="margin-top:65px;">
+                            <span class="input-header" style="margin-top:10px;width:110px;">Campus:</span>
+                            <select ng-model="activeProfile.campusid">
+                                <option ng-repeat="c in campuses" ng-value="c.campusid">{{c.campusname}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:110px;">Status:</span>
+                            <select ng-model="activeProfile.enrollmentstatusid">
+                                <option ng-repeat="st in enrollmentStatuses" ng-value="st.enrollmentstatusid">{{st.enrollmentstatus}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">DOD:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.dod">
+                        </div>
+                        <div class="newRow" style="margin-top:30px" >
+                            <span class="input-header" style="width:190px;">Start</span>
+                            <span class="input-header" style="width:100px;">End</span>
+                        </div>
+                        <div class="newRow" style="margin-top:5px;">
+                            <span class="input-header" style="width:110px;">LOA 1:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa1start">
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa1end">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">LOA 2:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa2start">
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa2end">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">LOA 3:</span>
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa3start">
+                            <input type="text" style="width:105px" ng-model="activeProfile.loa3end">
+                        </div>
+                    </div>
+
+                </div>
+                
+                <!-- tab 2 contents -->
+                <div ng-show="tab_2_active" style="height:90%;width:100%;overflow:auto;overflow-x:hidden;">
+
+                    <div id="tab_2_left" style="float:left;height:100%; width:35%">
+                        <div class="newRow" style="margin-top:30px;">
+                            <span class="input-header" style="width:110px;">Award Year:</span>
+                            <span class="disabled_input" style="width:70px">{{activeProfile.awardyear | awardYearFormat}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">ISIR Model:</span>
+                            <span class="disabled_input" style="width:100px">{{isirModelDescription()}}</span>
+                        </div>
+                         <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:110px;">Housing Type:</span>
+                            <select ng-model="activeProfile.housingtypeid">
+                                <option ng-repeat="ht in housingTypes" ng-value="ht.id">{{ht.name}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Room &amp; Board:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.foodhousingexp">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Transportation:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.transportationexp">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Personal:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.personalexp">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Child Care:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.childcareexp">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Other:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.otherexp">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:110px;">Total Allowances:</span>
+                            <span class="disabled_input" style="width:90px">{{calcAllowances()}}</span>
+                        </div>
+                       
+                    </div>
+
+                    <div id="tab_2_right" style="float:left;height:100%; width:50%">
+                        <div class="newRow" style="margin-top:80px;">
+                            <span class="input-header" style="width:200px;">Weeks:</span>
+                            <span class="disabled_input" style="width:70px">{{activeProfile.programweeks}}</span>
+                        </div>
+                         <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:200px;">Months:</span>
+                            <span class="disabled_input" style="width:50px">{{calcMonths()}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:200px;">Total Yearly Allowance:</span>
+                            <span class="disabled_input" style="width:90px">{{calcYearlyAllowance()}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:200px;">+ Total Fees:</span>
+                            <span class="disabled_input" style="width:90px">{{calcFees()}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:200px;">= Total Budget:</span>
+                            <span class="disabled_input" style="width:90px">{{calcBudget()}}</span>
+                        </div>
+                    </div>
+                    
+                </div>
+
+                <!-- tab 3 contents -->
+                <div ng-show="tab_3_active" style="height:95%;width:100%;overflow:auto;overflow-x:hidden;">
+
+                    <div id="tab_3_left" style="float:left;height:100%; width:33%">
+                        <div class="newRow" style="margin-top:20px;">
+                            <span class="input-header" style="width:90px;">ISIR Tran #:</span>
+                            <input type="text" style="width:116px" ng-model="activeProfile.isirtranno">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:90px;">EFC 9 Mo.:</span>
+                            <span class="disabled_input" style="width:90px">{{activeProfile.efc_9_mo}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:90px;">EFC Used:</span>
+                            <span class="disabled_input" style="width:90px">{{activeProfile.efc_used}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:90px;">FISAP:</span>
+                            <span class="disabled_input" style="width:90px">{{activeProfile.fisap}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:90px;">Inc Yr / Need:</span>
+                            <select ng-model="activeProfile.incomeyearforneed" ng-options="ny for ny in needYears"></select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:90px;">ISIR Model:</span>
+                            <select style="width:135px;font-size:14px;" ng-model="activeProfile.isir_model">
+                                <option ng-repeat="im in isirModels" ng-value="im.id">{{im.name}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:90px;">Verify Type:</span>
+                            <select style="width:220px;font-size:12px;" ng-model="activeProfile.verifytype">
+                                <option ng-repeat="vt in isirVerifyTypes" ng-value="vt.verificationtypeid">{{vt.verificationtypeid}}: {{vt.description}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:1px;">
+                            <span class="input-header" style="float:left;width:90px;">Loan Period:</span>
+                            <input type="text" style="float:left;width:116px" ng-model="activeProfile.loanperiodfrom">
+                            <span style="color:green;float:left;margin-top:15px;text-align:center;width:15px;">-</span>
+                            <input type="text" style="float:left;width:116px" ng-model="activeProfile.loanperiodto">
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:90px;">IRS Req (S):</span>
+                            <select style="width:247px;font-size:12px;" ng-model="activeProfile.studentirsreqflag">
+                                <option ng-repeat="ir in isirIrsTypes" ng-value="ir.requesttypeid">{{ir.description}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="margin-top:10px;width:90px;">IRS Req (P):</span>
+                            <select style="width:247px;font-size:12px;" ng-model="activeProfile.parentirsreqflag">
+                                <option ng-repeat="ir in isirIrsTypes" ng-value="ir.requesttypeid">{{ir.description}}</option>
+                            </select>
+                        </div>
+                        <div class="newRow" style="margin-top:1px;">
+                            <div class="float:left">
+                                <span class="input-header" style="float:left;width:90px;">Auto-0 EFC:</span>
+                                <input type="checkbox" style="float:left;" ng-model="activeProfile.autozeroefc" ng-checked="activeProfile.autozeroefc==1" ng-true-value="1" ng-false-value="0">
+                                <span class="input-header" style="float:left;width:65px;">C Flag:</span>
+                                <input type="checkbox" style="float:left;" ng-model="activeProfile.c_flag" ng-checked="activeProfile.c_flag==1" ng-true-value="1" ng-false-value="0">
+                                <span class="input-header" style="float:left;width:80px;">Prof Judg:</span>
+                                <input type="checkbox" style="float:left;" ng-model="activeProfile.professionaljudgment" ng-checked="activeProfile.professionaljudgment==1" ng-true-value="1" ng-false-value="0">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab_3_center" style="float:left; margin-left:5px; height:100%; width:41%">
+                        <div style="color:#509541; margin-top:30px;">Student Funding</div>
+                        <div style="margin-top:10px; width:98%; height:8%; border:3px solid #727272;">
+                            <div style="float:left; margin:10px 0 0 5px; width:100px; font-size:14px; color:#509541">Federal Program</div>
+                            <div style="float:left; margin:15px 0 0 20px; width:90px; font-size:14px; color:#509541">Amount</div>
+                            <div style="float:left; margin:5px 0 0 0; width:50px; font-size:14px; color:#509541">Loan Fee</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:70px; font-size:14px; color:#509541">Net Amount</div>
+                        </div>
+                        <div style="margin-top:-3px; width:98%; height:50%; border:3px solid #727272;overflow:auto;overflow-x:hidden;">
+                            <div style="cursor:pointer;width:100%;height:40px; padding:5px 0 0 0" ng-repeat="funding in fundings | orderBy:'studentfundingid'" ng-class-even="'altlist'" ng-click="selectFunding(funding)">
+                                <div style="float:left; width:auto;">
+                                    <select style="float:left; width:125px; font-size:12px; margin-left:5px;" ng-class="{'list-selected': activeFunding.studentfundingid==funding.studentfundingid}" ng-model="funding.fedpgmid">
+                                        <option ng-repeat="fp in federalPrograms" ng-value="fp.fedpgmid">{{fp.fedpgmname}}</option>
+                                    </select>
+                                    <input type="text" ng-model="funding.fundingamount" style="float:left; font-size:12px; margin: 0 0 0 5px; width:75px;" ng-class="{'list-selected': activeFunding.studentfundingid==funding.studentfundingid}">
+                                    <span class="disabled_input" style="width:40px;height:20px;font-size:12px;margin:0 0 0 5px">{{funding.loanfee*100}}</span>
+                                    <input disabled type="text" ng-value="{{funding.fundingamount}}-({{funding.fundingamount}}*{{funding.loanfee}}) | number : 2" style="float:left; font-size:12px; margin: 0 0 0 5px; width:75px;" ng-class="{'list-selected': activeFunding.studentfundingid==funding.studentfundingid}">
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top:-3px; width:98%; height:6%; border:3px solid #727272;">
+                            <div style="float:left; margin:10px 0 0 10px; color:grey">Total Awards:</div>
+                            <div style="float:left; margin:10px 0 0 10px; color:grey">{{ calcAwards() | number:2 }}</div>
+                            <div style="float:left; margin:10px 0 0 20px; color:grey">Total Fees:</div>
+                            <div style="float:left; margin:10px 0 0 10px; color:grey">{{ calcLoanFees() | number:2 }}</div>
+                        </div>
+                        
+                    </div>
+
+                    <div id="tab_3_right" style="float:left; margin-left:10px; height:100%; width:24%;">
+                        <div class="newRow" style="margin-top:20px;">
+                            <span class="input-header" style="width:125px;">Total Budget:</span>
+                            <span class="disabled_input" style="width:90px">{{calcBudget() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">+ Loan Fees:</span>
+                            <span class="disabled_input" style="width:90px">{{calcLoanFees() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">= Total COA:</span>
+                            <span class="disabled_input" style="width:90px">{{calcCoa() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">- EFC Used:</span>
+                            <span class="disabled_input" style="width:90px">{{activeProfile.efc_used | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">= Remaining Need:</span>
+                            <span class="disabled_input" style="width:90px">{{calcRemainingNeed() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:20px;">
+                            <span class="input-header" style="width:125px;">- Est FA (w/o DL):</span>
+                            <span class="disabled_input" style="width:90px">{{calcFaWithoutDl() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">= Need (for DL):</span>
+                            <span class="disabled_input" style="width:90px">{{calcNeedForDl() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:20px;">
+                            <span class="input-header" style="width:125px;">- Est FA (w/ DL):</span>
+                            <span class="disabled_input" style="width:90px">{{calcFaWithDl() | number:2}}</span>
+                        </div>
+                        <div class="newRow" style="margin-top:10px;">
+                            <span class="input-header" style="width:125px;">= Need (for Other):</span>
+                            <span class="disabled_input" style="width:90px">{{calcNeedForOther() | number:2}}</span>
+                        </div>
+                        
+                    </div>
+                </div>
+
+                <!-- tab 4 contents -->
+                <div ng-show="tab_4_active" style="height:98%;width:100%;overflow:auto;overflow-x:hidden;">
+
+                    <div id="tab_4_left" style="float:left; margin-left:10px; height:100%; width:80%">
+                        <div style="width:98%; height:7%;">
+                            <div style="float:left; margin:10px 0 0 5px; width:125px; font-size:14px; color:#509541">Federal Program</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:63px; font-size:14px; color:#509541">A/Y</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:83px; font-size:14px; color:#509541">Sched Date</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:75px; font-size:14px; color:#509541">Amount</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:30px; font-size:14px; color:#509541">Pmt #</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:50px; font-size:14px; color:#509541">Sem</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:25px; font-size:14px; color:#509541">ISIR In</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:35px; font-size:14px; color:#509541">ISIR Tran</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:25px; font-size:14px; color:#509541">Re-Pkg</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:47px; font-size:14px; color:#509541">Check #</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:83px; font-size:14px; color:#509541">Check Date</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:80px; font-size:14px; color:#509541">Check To</div>
+                            <div style="float:left; margin:10px 0 0 5px; width:70px; font-size:14px; color:#509541">Disb ID</div>
+                        </div>
+                        <div style="margin-top:10px; width:98%; height:90%; border:2px solid #727272;overflow:auto;overflow-x:hidden;">
+                            <div style="cursor:pointer; width:100%; height:40px; padding:5px 0 0 0" ng-repeat="payment in payments | orderBy:'paymentid'" ng-class-even="'altlist'" ng-click="selectPayment(payment)">
+                                <div style="float:left; width:auto;">
+                                    <select style="float:left; width:125px; font-size:12px; margin-left:5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}" ng-model="payment.fedpgmid">
+                                        <option ng-repeat="fp in federalPrograms" ng-value="fp.fedpgmid">{{fp.fedpgmname}}</option>
+                                    </select>
+                                    <select style="float:left;width:auto; font-size:12px; margin-left:5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}" ng-model="payment.awardyear">
+                                        <option ng-repeat="ay in awardYears" ng-value="ay.value">{{ay.display}}</option>
+                                    </select>
+                                    <input type="text" ng-model="payment.scheddate" style="float:left; width:83px; font-size:12px; margin:0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="text" ng-model="payment.amount" style="float:left; width:75px; font-size:12px; margin: 0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="text" ng-model="payment.hours" style="float:left; width:30px; font-size:12px; text-align:center; margin: 0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="text" value="SU17" style="float:left; width:50px; font-size:12px; text-align:center; margin: 0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="checkbox" ng-model="payment.isirin" style="float:left; margin: 0 0 0 10px;" ng-true-value="1" ng-false-value="0">
+                                    <input type="text" ng-model="payment.isirtranno" style="float:left; width:35px; font-size:12px; text-align:center; margin: 0 0 0 10px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="checkbox" ng-model="payment.repackage" style="float:left; margin: 0 0 0 10px;" ng-true-value="1" ng-false-value="0">
+                                    <input type="text" ng-model="payment.ckno" style="float:left; width:55px; font-size:12px; margin: 0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <input type="text" ng-model="payment.ckdate" style="float:left; width:83px; font-size:12px; margin:0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                    <select style="float:left;width:auto; font-size:12px; margin-left:5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}" ng-model="payment.cktoid">
+                                        <option ng-repeat="c in checkTos" ng-value="c.cktoid">{{c.checkto}}</option>
+                                    </select>
+                                    <input type="text" ng-model="payment.studentprofileid" style="float:left; width:70px; font-size:12px; margin: 0 0 0 5px;" ng-class="{'list-selected': activePayment.paymentid==payment.paymentid}">
+                                </div>
+                            </div>
+                        </div>
+                    
+                </div>
+                
+            </div>
+        </div>
+
+
+        <div>
+
+        </div>
+    </div>
+
+</div>
+{% endverbatim %}
+{% endblock content %}
